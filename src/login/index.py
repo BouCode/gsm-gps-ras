@@ -19,21 +19,6 @@ except Exception as ex:
     print (ex)
 
 
-user1 = {
-    "username": "user1",
-    "pass": "password1",
-    "password": "pbkdf2:sha256:260000$G3QRQeT3o4Rm98Ib$11a9db135dff8c843bba6e90531a4157601859e5b6df815b754ee2611454a012",
-    "position": "Lima"
-}
-
-user2 = {
-    "username": "user2",
-    "pass": "password2",
-    "password": "pbkdf2:sha256:260000$QQcdrfBKUk3bg4sA$b26cc8453cb1d314dbec861ae78bf131066dac3344eaf2b516c888e7b7921856'",
-    "position": "Trujillo"
-}
-
-
 @app.route ("/test")
 def test():
     return jsonify(test = 'test')
