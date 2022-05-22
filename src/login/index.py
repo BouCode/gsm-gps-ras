@@ -2,7 +2,9 @@ from flask import Flask, jsonify, request, jsonify
 from flask_jwt_extended import create_access_token, get_jwt_identity, jwt_required, JWTManager, set_access_cookies, unset_jwt_cookies, get_jwt
 from werkzeug.security import check_password_hash
 import pyodbc
+import requests
 from datetime import timedelta, datetime, timezone
+import sched, time
 
 app = Flask (__name__)
 jwt = JWTManager (app)
@@ -26,6 +28,7 @@ try:
 except Exception as exception:
     print (exception)
 
+@app.after_request
 def refresh_expiring_jwts(response): 
     try: 
         exp_timestamp = get_jwt()['exp']
@@ -53,15 +56,16 @@ def login():
     request_data = request.get_json()
     username = request_data['username']
     password = request_data['password']
-    cursor.execute ("SELECT USERNAME, PASSWORD FROM USERS WHERE USERNAME = ?", username)
+    cursor.execute ("SELECT USERNAME, PASSWORD, ID_USER FROM USERS WHERE USERNAME = ?", username)
     row = cursor.fetchone()
     db_user = row[0]
     db_pass = row[1]
+    db_id_user = row [2]
     if username == db_user:
         verify = check_password_hash (db_pass, password)
         if verify: 
             msg = jsonify ({'msg' : 'Logged'})
-            access_token = create_access_token (identity = username)
+            access_token = create_access_token (identity = db_id_user) 
             print (access_token)
             set_access_cookies (msg,access_token)
             return msg
@@ -82,6 +86,32 @@ def logout ():
 @jwt_required()
 def protected ():
     return jsonify (foo="bar")
+
+@app.route ("/user")
+@jwt_required()
+def user():
+    current_user_id = get_jwt_identity()
+    cursor.execute ("SELECT USERNAME, POSITION FROM USERS WHERE ID_USER = ?", current_user_id)
+    row = cursor.fetchone()
+    db_user = row[0]
+    db_position = row [1]
+    response = f'Hola {db_user}. Hoy estás en {db_position}'
+    s = sched.scheduler (time.time, time.sleep)
+
+    def do_something(sc):    
+        req = requests.get('https://api.wheretheiss.at/v1/satellites/25544').json()
+        lat = req['latitude']
+        lon = req['longitude']
+        timestamp = req['timestamp']
+        id_hardware = '1'
+        print (f'Latitud: {lat}; Longitud: {lon}; Timestamp: {timestamp}, id_hardware: {id_hardware}')
+        cursor.execute ("INSERT INTO GPS_POSITION (LATITUD, LONGITUD, TIMESTAMP, ID_HARDWARE) VALUES (?, ?, ?, ?)", lat, lon, timestamp, id_hardware)
+        connection.commit()
+        sc.enter (1, 1, do_something, (sc,))
+    
+    s.enter(1, 1, do_something, (s,))
+    s.run()
+    return jsonify (msg = response)
 
 if __name__ == '__main__': 
     app.debug = True

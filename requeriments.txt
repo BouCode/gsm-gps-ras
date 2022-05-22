@@ -1,3 +1,4 @@
 flask
 pyodbc
 flask-jwt-extended
+requests
