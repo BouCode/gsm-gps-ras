@@ -103,7 +103,7 @@ def user():
         lat = req['latitude']
         lon = req['longitude']
         timestamp = req['timestamp']
-        id_hardware = '1'
+        id_hardware = '2'
         print (f'Latitud: {lat}; Longitud: {lon}; Timestamp: {timestamp}, id_hardware: {id_hardware}')
         cursor.execute ("INSERT INTO GPS_POSITION (LATITUD, LONGITUD, TIMESTAMP, ID_HARDWARE) VALUES (?, ?, ?, ?)", lat, lon, timestamp, id_hardware)
         connection.commit()
