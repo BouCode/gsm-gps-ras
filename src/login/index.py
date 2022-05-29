@@ -5,9 +5,11 @@ import pyodbc
 import requests
 from datetime import timedelta, datetime, timezone
 import sched, time
+from flask_cors import CORS
 
 app = Flask (__name__)
 jwt = JWTManager (app)
+CORS(app)
 app.config["JWT_SECRET_KEY"] = "super-scret"
 app.config["JWT_COOKIE_SECURE"] = False
 app.config["JWT_TOKEN_LOCATION"] = ["headers", "cookies", "json", "query_string"]
@@ -64,10 +66,9 @@ def login():
     if username == db_user:
         verify = check_password_hash (db_pass, password)
         if verify: 
-            msg = jsonify ({'msg' : 'Logged'})
             access_token = create_access_token (identity = db_id_user) 
-            print (access_token)
-            set_access_cookies (msg,access_token)
+            msg =  jsonify (token = access_token)
+            set_access_cookies (msg, access_token)
             return msg
             
         else: 
@@ -87,6 +88,21 @@ def logout ():
 def protected ():
     return jsonify (foo="bar")
 
+@app.route ("/position/<username>")
+@jwt_required()
+def position (username):
+    current_user_id = get_jwt_identity()
+    cursor.execute ("SELECT LATITUD, LONGITUD, TIMESTAMP FROM GPS_POSITION WHERE ID_HARDWARE = ?", current_user_id)
+    row = cursor.fetchall()
+    coordinates = []
+    for i in row:
+        coordinates.append ([float(i[1]), float(i[0])])
+    geo_json = {
+        "type": "LineString",
+        "coordinates": coordinates
+    }
+    return jsonify (data=geo_json)
+
 @app.route ("/user")
 @jwt_required()
 def user():
@@ -103,9 +119,9 @@ def user():
         lat = req['latitude']
         lon = req['longitude']
         timestamp = req['timestamp']
-        id_hardware = '2'
+        id_hardware = '1'
         print (f'Latitud: {lat}; Longitud: {lon}; Timestamp: {timestamp}, id_hardware: {id_hardware}')
-        cursor.execute ("INSERT INTO GPS_POSITION (LATITUD, LONGITUD, TIMESTAMP, ID_HARDWARE) VALUES (?, ?, ?, ?)", lat, lon, timestamp, id_hardware)
+        cursor.execute ("INSERT INTO GPS_POSITION (LATITUD, LONGITUD, TIMESTAMP, ID_HARDWARE) VALUES (?, ?, ?, ?)", str(lat), str(lon), str(timestamp), id_hardware)
         connection.commit()
         sc.enter (1, 1, do_something, (sc,))
     
@@ -115,4 +131,4 @@ def user():
 
 if __name__ == '__main__': 
     app.debug = True
-    app.run (host='0.0.0.0', port=3000) 
+    app.run (host='0.0.0.0', port=8080) 
